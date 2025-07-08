@@ -1,0 +1,29 @@
+# Binaries for programs
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test binaries and output
+*.test
+*.out
+
+# Compiled binaries and packages
+/bin/
+/pkg/
+
+# Dependency directories (if not using Go Modules or if vendoring)
+# /vendor/
+
+# macOS specific files
+.DS_Store
+
+# Air (live reload tool) executable
+air
+
+# Environment variables
+.env
+.env.*
+
+# Temporary files and directories
+/tmp/
