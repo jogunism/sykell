@@ -44,6 +44,8 @@ func main() {
 	protected.Use(handlers.AuthMiddleware())
 	{
 		protected.POST("/crawl", crawlHandler.Crawl)
+		protected.GET("/crawl/list", crawlHandler.GetCrawlResults)
+		protected.DELETE("/crawl/:id", crawlHandler.DeleteCrawlResult) // New endpoint for deleting crawl results
 	}
 
 	r.Run(":8080") // listen and serve on 0.0.0.0:8080

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	// Add this import
 	"fmt"
 	"net/http"
 	"strings"

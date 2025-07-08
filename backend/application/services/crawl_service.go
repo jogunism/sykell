@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"backend/application/commands"
+	"backend/application/queries"
 	"backend/domain"
 	"backend/infrastructure/persistence"
 
@@ -126,4 +127,31 @@ func (s *CrawlService) Crawl(cmd commands.CrawlCommand) (domain.CrawlResult, err
 	}
 
 	return result, nil
+}
+
+// GetCrawlResults retrieves a paginated list of crawl results
+func (s *CrawlService) GetCrawlResults(query queries.GetCrawlResultsQuery) ([]domain.CrawlResult, error) {
+	// Ensure page and pageSize are valid
+	if query.Page < 1 {
+		query.Page = 1
+	}
+	if query.PageSize < 1 {
+		query.PageSize = 10 // Default page size
+	}
+
+	results, err := s.crawlResultRepo.GetAll(query.Page, query.PageSize)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get crawl results from repository: %w", err)
+	}
+
+	return results, nil
+}
+
+// DeleteCrawlResult deletes a crawl result by ID
+func (s *CrawlService) DeleteCrawlResult(cmd commands.DeleteCrawlResultCommand) error {
+	err := s.crawlResultRepo.Delete(cmd.ID)
+	if err != nil {
+		return fmt.Errorf("failed to delete crawl result: %w", err)
+	}
+	return nil
 }
