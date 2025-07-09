@@ -8,6 +8,7 @@ import (
 	"backend/infrastructure/database"
 	"backend/infrastructure/persistence"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -36,6 +37,16 @@ func main() {
 	// Setup Gin router
 	r := gin.Default()
 
+	// Configure CORS middleware
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:5173"}, // Allow your frontend origin
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		// MaxAge: 12 * time.Hour, // Optional: How long the preflight request can be cached
+	}))
+
 	// Public endpoints
 	r.GET("/test", testHandler.GetTestMessage)
 
@@ -45,7 +56,7 @@ func main() {
 	{
 		protected.POST("/crawl", crawlHandler.Crawl)
 		protected.GET("/crawl/list", crawlHandler.GetCrawlResults)
-		protected.DELETE("/crawl/:id", crawlHandler.DeleteCrawlResult) // New endpoint for deleting crawl results
+		protected.DELETE("/crawl", crawlHandler.DeleteCrawlResults)
 	}
 
 	r.Run(":8080") // listen and serve on 0.0.0.0:8080

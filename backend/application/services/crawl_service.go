@@ -57,7 +57,7 @@ func (s *CrawlService) Crawl(cmd commands.CrawlCommand) (domain.CrawlResult, err
 		if saveErr != nil {
 			fmt.Printf("Error saving crawl result (status code error): %v\n", saveErr)
 		}
-		return result, nil // Return result with error message, but no Go error for 4xx/5xx status
+		return result, domain.ErrURLFetchFailed // Return result with error message and a Go error
 	}
 
 	doc, err := goquery.NewDocumentFromReader(res.Body)
@@ -147,11 +147,14 @@ func (s *CrawlService) GetCrawlResults(query queries.GetCrawlResultsQuery) ([]do
 	return results, nil
 }
 
-// DeleteCrawlResult deletes a crawl result by ID
-func (s *CrawlService) DeleteCrawlResult(cmd commands.DeleteCrawlResultCommand) error {
-	err := s.crawlResultRepo.Delete(cmd.ID)
+// DeleteCrawlResults deletes multiple crawl results by IDs
+func (s *CrawlService) DeleteCrawlResults(cmd commands.DeleteCrawlResultsCommand) error {
+	if len(cmd.IDs) == 0 {
+		return nil // Nothing to delete
+	}
+	err := s.crawlResultRepo.DeleteMany(cmd.IDs)
 	if err != nil {
-		return fmt.Errorf("failed to delete crawl result: %w", err)
+		return fmt.Errorf("failed to delete multiple crawl results: %w", err)
 	}
 	return nil
 }

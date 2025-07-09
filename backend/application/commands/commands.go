@@ -4,6 +4,6 @@ type CrawlCommand struct {
 	URL string
 }
 
-type DeleteCrawlResultCommand struct {
-	ID int
+type DeleteCrawlResultsCommand struct {
+	IDs []int
 }

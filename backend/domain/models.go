@@ -36,3 +36,8 @@ type Claims struct {
 	Username string `json:"username"`
 	jwt.RegisteredClaims
 }
+
+// DeleteCrawlResultsRequest defines the structure for the batch delete POST request body
+type DeleteCrawlResultsRequest struct {
+	IDs []int `json:"ids" binding:"required"`
+}

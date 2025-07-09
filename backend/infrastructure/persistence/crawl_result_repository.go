@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"backend/domain"
 )
@@ -12,7 +13,8 @@ import (
 type CrawlResultRepository interface {
 	Save(result domain.CrawlResult) error
 	GetAll(page, pageSize int) ([]domain.CrawlResult, error)
-	Delete(id int) error // Added Delete method
+	// Delete(id int) error // Removed Delete method
+	DeleteMany(ids []int) error
 }
 
 // mysqlCrawlResultRepository implements CrawlResultRepository for MySQL
@@ -83,7 +85,6 @@ func (r *mysqlCrawlResultRepository) GetAll(page, pageSize int) ([]domain.CrawlR
 	for rows.Next() {
 		var result domain.CrawlResult
 		var headingCountsJSON []byte
-		// var created_at []byte // To scan TIMESTAMP - no need to declare here, scan directly into time.Time
 
 		err := rows.Scan(
 			&result.ID,
@@ -95,7 +96,7 @@ func (r *mysqlCrawlResultRepository) GetAll(page, pageSize int) ([]domain.CrawlR
 			&result.InaccessibleLinkCount,
 			&result.HasLoginForm,
 			&result.Error,
-			&result.CreatedAt, // Scan directly into time.Time
+			&result.CreatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan crawl result row: %w", err)
@@ -119,26 +120,40 @@ func (r *mysqlCrawlResultRepository) GetAll(page, pageSize int) ([]domain.CrawlR
 	return results, nil
 }
 
-// Delete deletes a CrawlResult from the database by ID
-func (r *mysqlCrawlResultRepository) Delete(id int) error {
-	stmt, err := r.db.Prepare("DELETE FROM crawl_results WHERE id = ?")
+// DeleteMany deletes multiple CrawlResults from the database by IDs
+func (r *mysqlCrawlResultRepository) DeleteMany(ids []int) error {
+	if len(ids) == 0 {
+		return nil // Nothing to delete
+	}
+
+	// Build the IN clause dynamically
+	placeholders := strings.Repeat("?, ", len(ids)-1) + "?"
+	query := fmt.Sprintf("DELETE FROM crawl_results WHERE id IN (%s)", placeholders)
+
+	// Convert []int to []interface{} for Exec
+	args := make([]interface{}, len(ids))
+	for i, id := range ids {
+		args[i] = id
+	}
+
+	stmt, err := r.db.Prepare(query)
 	if err != nil {
-		return fmt.Errorf("failed to prepare delete statement: %w", err)
+		return fmt.Errorf("failed to prepare batch delete statement: %w", err)
 	}
 	defer stmt.Close()
 
-	res, err := stmt.Exec(id)
+	res, err := stmt.Exec(args...)
 	if err != nil {
-		return fmt.Errorf("failed to execute delete statement: %w", err)
+		return fmt.Errorf("failed to execute batch delete statement: %w", err)
 	}
 
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
+		return fmt.Errorf("failed to get rows affected for batch delete: %w", err)
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("no record found with id %d", id)
+		return fmt.Errorf("no records found for batch delete with provided IDs")
 	}
 
 	return nil
