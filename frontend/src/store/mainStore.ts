@@ -12,6 +12,7 @@ interface MainStore {
   isSuccess: undefined | boolean;
   errorMessage: string | null; // New state for error message
   crawl: (url: string) => Promise<void>;
+  reset: () => void;
 }
 
 const useMainStore = create<MainStore>((set) => ({
@@ -37,6 +38,10 @@ const useMainStore = create<MainStore>((set) => ({
     }
 
     set({ pending: false });
+  },
+
+  reset: () => {
+    set({ isSuccess: undefined });
   },
 }));
 

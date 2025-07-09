@@ -8,7 +8,7 @@ import mainStore from "@store/mainStore";
  * Component Analytics
  */
 const Analytics: React.FC = () => {
-  const { crawl, pending } = mainStore();
+  const { crawl, pending, isSuccess } = mainStore();
 
   // states
   const [url, setUrl] = useState("");
@@ -50,6 +50,10 @@ const Analytics: React.FC = () => {
     validateUrl(url);
   };
 
+  const resetInputValue = () => {
+    setUrl("");
+  };
+
   /*******************************************************
    * lifecycle hooks
    */
@@ -59,6 +63,12 @@ const Analytics: React.FC = () => {
       inputRef.current.focus();
     }
   }, []);
+
+  useEffect(() => {
+    if (isSuccess !== undefined) {
+      resetInputValue();
+    }
+  }, [isSuccess]);
 
   /*******************************************************
    * render
@@ -88,7 +98,11 @@ const Analytics: React.FC = () => {
           placeholder="https://url"
           className={`border p-2 rounded-md w-full max-w-md placeholder-gray-300 ${
             !isValidUrl ? "border-red-500" : "border-gray-500"
-          } ${pending ? "bg-gray-100 cursor-not-allowed text-gray-500" : "bg-white text-gray-800"}
+          } ${
+            pending
+              ? "bg-gray-100 cursor-not-allowed text-gray-500"
+              : "bg-white text-gray-800"
+          }
           }`}
           ref={inputRef} // Attach the ref to the input element
         />
