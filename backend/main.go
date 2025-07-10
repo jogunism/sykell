@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os" // environment variables
 
 	"backend/application/services"
 	"backend/handlers"
@@ -13,8 +14,10 @@ import (
 )
 
 func main() {
-	// Database connection string (replace with your actual credentials)
-	dbConnStr := "admin:HyunwooCho!23$@tcp(sykell.c10yg6egqxbv.eu-central-1.rds.amazonaws.com:3306)/sykell?parseTime=true"
+	dbConnStr := os.Getenv("DATABASE_URL")
+	if dbConnStr == "" {
+		log.Fatal("DATABASE_URL environment variable not set")
+	}
 
 	// Initialize database connection
 	db, err := database.InitDB(dbConnStr)

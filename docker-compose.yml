@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  backend:
+    platform: linux/amd64
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend:/app
+    environment:
+      DATABASE_URL: "admin:HyunwooCho!23$@tcp(sykell.c10yg6egqxbv.eu-central-1.rds.amazonaws.com:3306)/sykell?parseTime=true"
+    command: go run main.go
+    networks:
+      - sykell-network
+
+  frontend:
+    platform: linux/amd64
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules # Avoid overwriting node_modules in container
+    command: npm run dev -- --host 0.0.0.0
+    networks:
+      - sykell-network
+
+networks:
+  sykell-network:
+    driver: bridge
