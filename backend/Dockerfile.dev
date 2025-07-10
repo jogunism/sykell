@@ -1,3 +1,4 @@
+# backend/Dockerfile.dev
 FROM golang:1.24-alpine
 
 WORKDIR /app
@@ -7,11 +8,11 @@ COPY go.mod .
 COPY go.sum .
 RUN go mod download
 
-# Copy the rest of the application source code (will be volume mounted in dev)
+# Copy the rest of the application source code
 COPY . .
 
 # Expose the port the application listens on
 EXPOSE 8080
 
-# Command to run the executable (will be overridden by docker-compose for dev)
+# Command to run the executable
 CMD ["go", "run", "main.go"]

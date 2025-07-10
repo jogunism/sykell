@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  backend:
+    platform: linux/amd64
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    ports:
+      - "8080:8080"
+    environment:
+      CORS_ORIGIN: http://sykell-alb-1699323201.eu-central-1.elb.amazonaws.com
+    command: ./main
+    networks:
+      - sykell-network
+
+  frontend:
+    platform: linux/amd64
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        VITE_BASE_API_URL: "http://sykell-alb-1699323201.eu-central-1.elb.amazonaws.com"
+        VITE_BASE_API_TOKEN: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6Imh5dW53b29fY2hvIn0.nz6YQhWHm-qlrSPdk6f30Ho5-3Si4qaiBiw1YvCYCBc"
+    ports:
+      - "80:80"
+    networks:
+      - sykell-network
+
+
+networks:
+  sykell-network:
+    driver: bridge
