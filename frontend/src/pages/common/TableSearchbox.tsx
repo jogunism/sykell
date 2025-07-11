@@ -1,4 +1,7 @@
 import React from "react";
+// UI Component
+import Magnifyer from "@icons/Magnifyer";
+import X from "@icons/X";
 // store
 import mainStore from "@store/mainStore";
 
@@ -42,39 +45,13 @@ const TableSearchbox: React.FC = () => {
           onChange={(e) => setQueryString(e.target.value)}
           onKeyUp={handleSearchKeyUp}
         />
-        <svg
-          className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-          ></path>
-        </svg>
+        <Magnifyer />
         {queryString && (
           <button
             className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
             onClick={handleClearButtonClick}
           >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M6 18L18 6M6 6l12 12"
-              ></path>
-            </svg>
+            <X />
           </button>
         )}
       </div>

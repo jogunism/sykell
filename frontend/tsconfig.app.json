@@ -27,7 +27,8 @@
       "@/*": ["src/*"],
       "@common/*": ["src/pages/common/*"],
       "@lib/*": ["src/lib/*"],
-      "@store/*": ["./src/store/*"]
+      "@store/*": ["./src/store/*"],
+      "@icons/*": ["./src/pages/icons/*"]
     }
   },
   "include": ["src"]

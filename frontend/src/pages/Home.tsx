@@ -4,8 +4,8 @@ import { useSearchParams } from "react-router-dom";
 import TablePagenation from "./common/TablePagenation";
 import TableSearchbox from "./common/TableSearchbox";
 import HomeDetail from "./HomeDetail";
-import ArrowUp from "./icons/ArrowUp";
-import ArrowDown from "./icons/ArrowDown";
+import ArrowUp from "@icons/ArrowUp";
+import ArrowDown from "@icons/ArrowDown";
 // store
 import mainStore from "@store/mainStore";
 // constants

@@ -11,6 +11,7 @@ export default defineConfig({
       "@common": path.resolve(__dirname, "./src/common"),
       "@lib": path.resolve(__dirname, "./src/lib"),
       "@store": path.resolve(__dirname, "./src/store"),
+      "@icons": path.resolve(__dirname, "./src/pages/icons"),
     },
   },
 });
