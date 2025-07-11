@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 // Components
-import Header from "@/common/Header";
-import LeftMenu from "@/common/LeftMenu";
+import Header from "@/pages/common/Header";
+import LeftMenu from "@/pages/common/LeftMenu";
 import Home from "@/pages/Home";
 import Analytics from "@/pages/Analytics";
 

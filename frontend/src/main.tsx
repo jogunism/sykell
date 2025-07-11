@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import ToastProvider from "@common/ToastProvider";
+import ToastProvider from "@/pages/common/ToastProvider.tsx";
 
 import "./global.css";
 
