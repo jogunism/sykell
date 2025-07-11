@@ -31,18 +31,25 @@ const HomeDetail: React.FC = () => {
     linkChartData,
   } = mainStore();
 
+  const COLORS = ["#0088FE", "#00C49F", "#FFBB28"]; // Colors for pie chart segments
+
+  /*******************************************************
+   * handlers
+   */
   const handleModalClose = () => {
     setModalOpen(false);
   };
 
-  const COLORS = ["#0088FE", "#00C49F", "#FFBB28"]; // Colors for pie chart segments
-
+  /*******************************************************
+   * render
+   */
   return (
     <Modal
       size={"lg"}
       isOpen={isModalOpen}
       onClose={handleModalClose}
       title={currentItem?.pageTitle || "CRAWLING DID NOT WORK."}
+      titleColor={currentItem?.error ? "text-red-800" : "text-gray-800"}
     >
       <div className="p-6 text-gray-700">
         <div className="p-5 mb-6 border border-gray-300 rounded-2xl lg:p-6 md:min-h-[200px]">
@@ -72,7 +79,7 @@ const HomeDetail: React.FC = () => {
                     URL
                   </p>
                   <p className="text-sm font-medium text-blue-800 ">
-                    <a href={currentItem?.url || undefined}>
+                    <a href={currentItem?.url || undefined} target="_blank">
                       {currentItem?.url}
                     </a>
                   </p>
@@ -139,7 +146,7 @@ const HomeDetail: React.FC = () => {
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
-                    <p className="text-gray-500 text-center">
+                    <p className="text-gray-500 text-center pt-10">
                       No heading data available.
                     </p>
                   )}
@@ -174,7 +181,7 @@ const HomeDetail: React.FC = () => {
                       </PieChart>
                     </ResponsiveContainer>
                   ) : (
-                    <p className="text-gray-500 text-center">
+                    <p className="text-gray-500 text-center pt-10">
                       No link data available.
                     </p>
                   )}

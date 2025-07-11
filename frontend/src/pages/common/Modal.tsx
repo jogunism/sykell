@@ -9,6 +9,7 @@ interface ModalProps {
   size?: "sm" | "md" | "lg" | "full";
   isScrollAllowed?: boolean;
   position?: "top" | "middle" | "bottom";
+  titleColor?: string;
 }
 
 const Modal: React.FC<ModalProps> = ({
@@ -20,6 +21,7 @@ const Modal: React.FC<ModalProps> = ({
   size = "sm",
   isScrollAllowed = false,
   position = "middle",
+  titleColor = "text-gray-700",
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -112,7 +114,7 @@ const Modal: React.FC<ModalProps> = ({
             </button>
           )}
           {title && (
-            <h1 className="text-2xl font-bold px-6 py-4 text-gray-700">
+            <h1 className={`text-2xl font-bold px-6 py-4 ${titleColor}`}>
               {title}
             </h1>
           )}
