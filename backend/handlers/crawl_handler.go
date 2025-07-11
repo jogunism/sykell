@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -61,12 +62,13 @@ func (h *CrawlHandler) Crawl(c *gin.Context) {
 
 // GetCrawlResults handles the request to get a paginated list of crawl results
 func (h *CrawlHandler) GetCrawlResults(c *gin.Context) {
-	pageStr := c.DefaultQuery("page", "1")
+	currPageStr := c.DefaultQuery("currPage", "1")
 	pageSizeStr := c.DefaultQuery("pageSize", "10")
+	queryStr := c.DefaultQuery("query", "")
 
-	page, err := strconv.Atoi(pageStr)
-	if err != nil || page < 1 {
-		page = 1
+	currPage, err := strconv.Atoi(currPageStr)
+	if err != nil || currPage < 1 {
+		currPage = 1
 	}
 
 	pageSize, err := strconv.Atoi(pageSizeStr)
@@ -75,17 +77,18 @@ func (h *CrawlHandler) GetCrawlResults(c *gin.Context) {
 	}
 
 	query := queries.GetCrawlResultsQuery{
-		Page:     page,
+		CurrPage: currPage,
 		PageSize: pageSize,
+		Query:    queryStr,
 	}
 
-	results, err := h.crawlService.GetCrawlResults(query)
+	response, err := h.crawlService.GetCrawlResults(query)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, results)
+	c.JSON(http.StatusOK, gin.H{"list": response.List, "total_count": response.TotalCount})
 }
 
 // DeleteCrawlResults handles the request to delete multiple crawl results by IDs
@@ -110,5 +113,5 @@ func (h *CrawlHandler) DeleteCrawlResults(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": "Crawl results deleted successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Crawl results deleted successfully"})
 }

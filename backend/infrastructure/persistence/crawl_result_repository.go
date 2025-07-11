@@ -12,8 +12,8 @@ import (
 // CrawlResultRepository defines the interface for storing CrawlResult
 type CrawlResultRepository interface {
 	Save(result domain.CrawlResult) error
-	GetAll(page, pageSize int) ([]domain.CrawlResult, error)
-	// Delete(id int) error // Removed Delete method
+	GetAll(page, pageSize int, query string) ([]domain.CrawlResult, int, error)
+	GetTotalCount(query string) (int, error)
 	DeleteMany(ids []int) error
 }
 
@@ -37,10 +37,10 @@ func (r *mysqlCrawlResultRepository) Save(result domain.CrawlResult) error {
 
 	stmt, err := r.db.Prepare(`
 		INSERT INTO crawl_results (
-			html_version, page_title, heading_counts,
+			html_version, url, page_title, heading_counts,
 			internal_link_count, external_link_count, inaccessible_link_count,
 			has_login_form, error
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`)
 	if err != nil {
 		return fmt.Errorf("failed to prepare statement: %w", err)
@@ -49,6 +49,7 @@ func (r *mysqlCrawlResultRepository) Save(result domain.CrawlResult) error {
 
 	_, err = stmt.Exec(
 		result.HTMLVersion,
+		result.URL.String, // Use String field for saving
 		result.PageTitle,
 		headingCountsJSON,
 		result.InternalLinkCount,
@@ -65,19 +66,41 @@ func (r *mysqlCrawlResultRepository) Save(result domain.CrawlResult) error {
 }
 
 // GetAll retrieves a paginated list of CrawlResults from the database
-func (r *mysqlCrawlResultRepository) GetAll(page, pageSize int) ([]domain.CrawlResult, error) {
+func (r *mysqlCrawlResultRepository) GetAll(page, pageSize int, query string) ([]domain.CrawlResult, int, error) {
 	offset := (page - 1) * pageSize
 
-	rows, err := r.db.Query(`
-		SELECT id, html_version, page_title, heading_counts,
+	baseQuery := `
+		SELECT id, html_version, url, page_title, heading_counts,
 			internal_link_count, external_link_count, inaccessible_link_count,
 			has_login_form, error, created_at
 		FROM crawl_results
-		ORDER BY created_at DESC
-		LIMIT ? OFFSET ?
-	`, pageSize, offset)
+	`
+
+	var args []interface{}
+	whereClause := ""
+
+	if query != "" {
+		searchQuery := "%" + query + "%"
+		whereClause = " WHERE page_title LIKE ? OR url LIKE ?"
+		args = append(args, searchQuery, searchQuery)
+	}
+
+	// Get total count first
+	totalCount, err := r.GetTotalCount(query)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query crawl results: %w", err)
+		return nil, 0, fmt.Errorf("failed to get total count: %w", err)
+	}
+
+	// Append ORDER BY, LIMIT, OFFSET for the main query
+	baseQuery += whereClause + `
+		ORDER BY id DESC
+		LIMIT ? OFFSET ?
+	`
+	args = append(args, pageSize, offset)
+
+	rows, err := r.db.Query(baseQuery, args...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to query crawl results: %w", err)
 	}
 	defer rows.Close()
 
@@ -89,6 +112,7 @@ func (r *mysqlCrawlResultRepository) GetAll(page, pageSize int) ([]domain.CrawlR
 		err := rows.Scan(
 			&result.ID,
 			&result.HTMLVersion,
+			&result.URL,
 			&result.PageTitle,
 			&headingCountsJSON,
 			&result.InternalLinkCount,
@@ -99,14 +123,14 @@ func (r *mysqlCrawlResultRepository) GetAll(page, pageSize int) ([]domain.CrawlR
 			&result.CreatedAt,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan crawl result row: %w", err)
+			return nil, 0, fmt.Errorf("failed to scan crawl result row: %w", err)
 		}
 
 		// Unmarshal HeadingCounts JSON
 		if len(headingCountsJSON) > 0 {
 			err = json.Unmarshal(headingCountsJSON, &result.HeadingCounts)
 			if err != nil {
-				return nil, fmt.Errorf("failed to unmarshal heading counts JSON: %w", err)
+				return nil, 0, fmt.Errorf("failed to unmarshal heading counts JSON: %w", err)
 			}
 		}
 
@@ -114,10 +138,29 @@ func (r *mysqlCrawlResultRepository) GetAll(page, pageSize int) ([]domain.CrawlR
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("error after scanning rows: %w", err)
+		return nil, 0, fmt.Errorf("error after scanning rows: %w", err)
 	}
 
-	return results, nil
+	return results, totalCount, nil
+}
+
+// GetTotalCount retrieves the total number of crawl results from the database
+func (r *mysqlCrawlResultRepository) GetTotalCount(query string) (int, error) {
+	var count int
+	baseQuery := "SELECT COUNT(*) FROM crawl_results"
+	var args []interface{}
+
+	if query != "" {
+		searchQuery := "%" + query + "%"
+		baseQuery += " WHERE page_title LIKE ? OR url LIKE ?"
+		args = append(args, searchQuery, searchQuery)
+	}
+
+	err := r.db.QueryRow(baseQuery, args...).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get total count of crawl results: %w", err)
+	}
+	return count, nil
 }
 
 // DeleteMany deletes multiple CrawlResults from the database by IDs

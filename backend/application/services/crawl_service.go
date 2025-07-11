@@ -1,6 +1,7 @@
 package services
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -27,6 +28,7 @@ func NewCrawlService(repo persistence.CrawlResultRepository) *CrawlService {
 
 func (s *CrawlService) Crawl(cmd commands.CrawlCommand) (domain.CrawlResult, error) {
 	result := domain.CrawlResult{
+		URL:           domain.NullString{NullString: sql.NullString{String: cmd.URL, Valid: true}},
 		HeadingCounts: make(map[string]int),
 	}
 
@@ -129,22 +131,30 @@ func (s *CrawlService) Crawl(cmd commands.CrawlCommand) (domain.CrawlResult, err
 	return result, nil
 }
 
+type GetCrawlResultsResponse struct {
+	List      []domain.CrawlResult `json:"list"`
+	TotalCount int                `json:"total_count"`
+}
+
 // GetCrawlResults retrieves a paginated list of crawl results
-func (s *CrawlService) GetCrawlResults(query queries.GetCrawlResultsQuery) ([]domain.CrawlResult, error) {
+func (s *CrawlService) GetCrawlResults(query queries.GetCrawlResultsQuery) (GetCrawlResultsResponse, error) {
 	// Ensure page and pageSize are valid
-	if query.Page < 1 {
-		query.Page = 1
+	if query.CurrPage < 1 {
+		query.CurrPage = 1
 	}
 	if query.PageSize < 1 {
-		query.PageSize = 10 // Default page size
+		query.PageSize = 10
 	}
 
-	results, err := s.crawlResultRepo.GetAll(query.Page, query.PageSize)
+	results, totalCount, err := s.crawlResultRepo.GetAll(query.CurrPage, query.PageSize, query.Query)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get crawl results from repository: %w", err)
+		return GetCrawlResultsResponse{}, fmt.Errorf("failed to get crawl results from repository: %w", err)
 	}
 
-	return results, nil
+	return GetCrawlResultsResponse{
+		List:      results,
+		TotalCount: totalCount,
+	}, nil
 }
 
 // DeleteCrawlResults deletes multiple crawl results by IDs

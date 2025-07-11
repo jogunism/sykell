@@ -2,7 +2,7 @@ package main
 
 import (
 	"log"
-	"os" // environment variables
+	"strings"
 
 	"backend/application/services"
 	"backend/handlers"
@@ -14,10 +14,7 @@ import (
 )
 
 func main() {
-	dbConnStr := os.Getenv("DATABASE_URL")
-	if dbConnStr == "" {
-		log.Fatal("DATABASE_URL environment variable not set")
-	}
+	dbConnStr := "admin:HyunwooCho!23$@tcp(sykell.c10yg6egqxbv.eu-central-1.rds.amazonaws.com:3306)/sykell?parseTime=true"
 
 	// Initialize database connection
 	db, err := database.InitDB(dbConnStr)
@@ -25,6 +22,10 @@ func main() {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 	defer db.Close()
+
+
+	gin.SetMode(gin.ReleaseMode)
+
 
 	// Initialize repositories
 	crawlResultRepo := persistence.NewMySQLCrawlResultRepository(db)
@@ -40,9 +41,40 @@ func main() {
 	// Setup Gin router
 	r := gin.Default()
 
+	// X-Forwarded-For 헤더 디버깅용 미들웨어
+	r.Use(func(c *gin.Context) {
+		xForwardedFor := c.GetHeader("X-Forwarded-For")
+		if xForwardedFor != "" {
+			ips := strings.Split(xForwardedFor, ",")
+			log.Printf("X-Forwarded-For: %s (IP count: %d)", xForwardedFor, len(ips))
+			
+			// 30개 이상이면 경고
+			if len(ips) >= 30 {
+				log.Printf("WARNING: X-Forwarded-For has %d IPs, this will cause 463 error", len(ips))
+			}
+		}
+		
+		// 모든 X-Forwarded-* 헤더 로깅
+		for name, values := range c.Request.Header {
+			if strings.HasPrefix(name, "X-Forwarded-") {
+				log.Printf("Header %s: %v", name, values)
+			}
+		}
+		
+		c.Next()
+	})
+
+
+	// AWS ALB 463 에러 방지를 위한 프록시 설정
+	r.ForwardedByClientIP = true
+	r.SetTrustedProxies([]string{
+		"10.0.0.0/8",     // VPC 내부
+		"172.16.0.0/12",  // ALB 대역
+	})
+
 	// Configure CORS middleware
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173"}, // Allow your frontend origin
+		AllowOrigins:     []string{"http://localhost:5173", "http://sykell-alb-1699323201.eu-central-1.elb.amazonaws.com"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -51,10 +83,11 @@ func main() {
 	}))
 
 	// Public endpoints
-	r.GET("/test", testHandler.GetTestMessage)
+	api := r.Group("/api")
+	api.GET("/test", testHandler.GetTestMessage)
 
 	// Protected endpoints (require JWT authentication)
-	protected := r.Group("/")
+	protected := api.Group("")
 	protected.Use(handlers.AuthMiddleware())
 	{
 		protected.POST("/crawl", crawlHandler.Crawl)

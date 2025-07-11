@@ -3,6 +3,7 @@ package queries
 type GetTestMessageQuery struct {}
 
 type GetCrawlResultsQuery struct {
-	Page     int
+	CurrPage int
 	PageSize int
+	Query    string
 }
