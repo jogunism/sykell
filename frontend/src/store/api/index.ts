@@ -1,6 +1,29 @@
 import http from "@lib/http";
+import { snakeToCamel } from "@/utils";
 // constants
 // import type { University, Contactus } from "@/types/constants";
+
+export const crawlList = async (
+  currPage: number,
+  pageSize: number,
+  queryString: string
+) => {
+  try {
+    const response = await http.get(
+      `/crawl/list?currPage=${currPage}&pageSize=${pageSize}&query=${queryString}`
+    );
+    return snakeToCamel(response?.data);
+  } catch (error) {}
+};
+
+export const deleteCrawlItem = async (ids: number[]) => {
+  try {
+    const response = await http.delete("/crawl", { data: { ids: ids } });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
 
 export const crawlUrl = async (url: string) => {
   try {
