@@ -6,11 +6,12 @@ import { snakeToCamel } from "@/utils";
 export const crawlList = async (
   currPage: number,
   pageSize: number,
-  queryString: string
+  queryString: string,
+  sorting: string
 ) => {
   try {
     const response = await http.get(
-      `/crawl/list?currPage=${currPage}&pageSize=${pageSize}&query=${queryString}`
+      `/crawl/list?currPage=${currPage}&pageSize=${pageSize}&query=${queryString}&sorting=${sorting}`
     );
     return snakeToCamel(response?.data);
   } catch (error) {}

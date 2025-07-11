@@ -4,6 +4,8 @@ import { useSearchParams } from "react-router-dom";
 import TablePagenation from "./common/TablePagenation";
 import TableSearchbox from "./common/TableSearchbox";
 import HomeDetail from "./HomeDetail";
+import ArrowUp from "./icons/ArrowUp";
+import ArrowDown from "./icons/ArrowDown";
 // store
 import mainStore from "@store/mainStore";
 // constants
@@ -24,6 +26,9 @@ const Home: React.FC = () => {
     setCheckedIds,
     clickCheckbox,
     isAllChecked,
+
+    sorting,
+    toggleSorting,
 
     setCurrentItem,
     isModalOpen,
@@ -100,16 +105,40 @@ const Home: React.FC = () => {
                 />
               </th>
               <th className="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-[60%] md:w-3/5">
-                Page title
+                <div className="flex items-left">
+                  <button
+                    className="flex"
+                    onClick={() => toggleSorting("page_title")}
+                  >
+                    <span>Page title</span>
+                    {sorting.page_title === false ? <ArrowDown /> : <ArrowUp />}
+                  </button>
+                </div>
               </th>
               <th className="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell md:w-[10%]">
                 Link
               </th>
               <th className="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider w-[40%] md:w-[10%]">
-                Status
+                <div className="flex items-center justify-center">
+                  <button
+                    className="flex"
+                    onClick={() => toggleSorting("error")}
+                  >
+                    <span>Status</span>
+                    {sorting.error === false ? <ArrowDown /> : <ArrowUp />}
+                  </button>
+                </div>
               </th>
               <th className="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell md:w-[20%]">
-                Date
+                <div className="flex items-center justify-center">
+                  <button
+                    className="flex"
+                    onClick={() => toggleSorting("created_at")}
+                  >
+                    <span>Date</span>
+                    {sorting.created_at === false ? <ArrowDown /> : <ArrowUp />}
+                  </button>
+                </div>
               </th>
             </tr>
           </thead>

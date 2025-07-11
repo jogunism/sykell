@@ -5,6 +5,7 @@ import { crawlList, deleteCrawlItem, crawlUrl } from "./api";
 // Utils
 import { errorHandler } from "@lib/errorHandler";
 import { toast } from "@lib/toast";
+
 // constants
 import type { CrawlItem, HeadingChartItem, LinkChartItem } from "@/constants";
 
@@ -25,6 +26,9 @@ interface MainStore {
   setCheckedIds: (ids: number[]) => void;
   clickCheckbox: (itemId: number, isChecked: boolean) => void;
   isAllChecked: boolean;
+
+  sorting: { [key: string]: boolean | undefined };
+  toggleSorting: (type: string) => Promise<void>;
 
   queryString: string;
   showDeleteButton: boolean;
@@ -55,6 +59,12 @@ const useMainStore = create<MainStore>((set, get) => ({
   checkedIds: [],
   isAllChecked: false,
 
+  sorting: {
+    // page_title: true,
+    // error: true,
+    created_at: false,
+  },
+
   currPage: 1,
   pageSize: 10,
   totalCount: 0,
@@ -76,7 +86,8 @@ const useMainStore = create<MainStore>((set, get) => ({
       const response = await crawlList(
         get().currPage,
         get().pageSize,
-        get().queryString
+        get().queryString,
+        JSON.stringify(get().sorting)
       );
 
       set({
@@ -112,6 +123,17 @@ const useMainStore = create<MainStore>((set, get) => ({
     }
 
     get().setCheckedIds(newCheckedIds);
+  },
+
+  toggleSorting: async (type: string) => {
+    const currentSorting = get().sorting;
+    const newSorting: { [key: string]: boolean | undefined } = {
+      [type]:
+        currentSorting[type] !== undefined ? !currentSorting[type] : false,
+    };
+    set({ sorting: newSorting });
+    console.log(newSorting);
+    await get().fetchCrawlList();
   },
 
   setCurrPage: async (currPage: number) => {
