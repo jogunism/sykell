@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 // UI Component
 import TablePagenation from "./common/TablePagenation";
 import TableSearchbox from "./common/TableSearchbox";
@@ -25,16 +26,15 @@ const Home: React.FC = () => {
     isAllChecked,
 
     setCurrentItem,
+    isModalOpen,
   } = mainStore();
 
-  // const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const currentId = searchParams.get("c");
 
   /*******************************************************
    * handlers
    */
-  // const openModal = () => setIsModalOpen(true);
-  // const closeModal = () => setModalOpen(false);
-
   const handleCheckboxAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     const isChecked = e.target.checked;
     setCheckedIds(isChecked ? crawlItemList.map((item) => item.id) : []);
@@ -57,6 +57,24 @@ const Home: React.FC = () => {
   useEffect(() => {
     fetchCrawlList();
   }, []);
+
+  useEffect(() => {
+    if (currentId) {
+      setTimeout(() => {
+        setCurrentItem(parseInt(currentId));
+      }, 200);
+    }
+  }, [currentId]);
+
+  useEffect(() => {
+    // console.log(isModalOpen);
+    if (!isModalOpen) {
+      // remove query parameter
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete("c");
+      setSearchParams(newParams);
+    }
+  }, [isModalOpen]);
 
   /*******************************************************
    * render

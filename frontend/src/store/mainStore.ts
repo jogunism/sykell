@@ -1,3 +1,4 @@
+import React from "react";
 import { create } from "zustand";
 // APIs
 import { crawlList, deleteCrawlItem, crawlUrl } from "./api";
@@ -185,7 +186,13 @@ const useMainStore = create<MainStore>((set, get) => ({
     try {
       const response = await crawlUrl(url);
 
-      toast.success(response.message);
+      const htmlContent = React.createElement("div", null, [
+        response.message,
+        React.createElement("br"),
+        React.createElement("a", { href: `/?c=${response.id}` }, "See details"),
+      ]);
+      toast.success(htmlContent, { autoClose: false });
+
       set({ isSuccess: true });
       //
     } catch (error) {

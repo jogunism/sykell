@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 // Utils
 import { FaSpinner } from "react-icons/fa";
 // store
@@ -16,8 +16,6 @@ const Analytics: React.FC = () => {
   const [validationMessage, setValidationMessage] = useState<string | null>(
     null
   );
-
-  const inputRef = useRef<HTMLInputElement>(null); // input box
 
   /*******************************************************
    * handlers
@@ -58,13 +56,6 @@ const Analytics: React.FC = () => {
    * lifecycle hooks
    */
   useEffect(() => {
-    // Focus the input
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, []);
-
-  useEffect(() => {
     if (isSuccess !== undefined) {
       resetInputValue();
     }
@@ -101,15 +92,11 @@ const Analytics: React.FC = () => {
                   }
                 }}
                 placeholder="https://url"
-                className={`border p-2 rounded-md w-full max-w-md placeholder-gray-300 ${
+                className={`border p-2 rounded-md w-full max-w-md placeholder-gray-400 ${
                   !isValidUrl ? "border-red-500" : "border-gray-500"
                 } ${
-                  pending
-                    ? "bg-gray-100 cursor-not-allowed text-gray-500"
-                    : "bg-white text-gray-800"
-                }
-          }`}
-                ref={inputRef} // Attach the ref to the input element
+                  pending ? "bg-gray-100 cursor-not-allowed" : "bg-white"
+                } text-gray-800 `}
               />
               <button
                 onClick={handleSendClick}
