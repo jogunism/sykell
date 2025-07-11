@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 // UI Component
 import TablePagenation from "./common/TablePagenation";
 import TableSearchbox from "./common/TableSearchbox";
 import HomeDetail from "./HomeDetail";
 // store
 import mainStore from "@store/mainStore";
+// constants
 import type { CrawlItem } from "@/constants";
+// utils
 import { formatDate } from "@/utils";
 
 /**
@@ -15,22 +17,23 @@ const Home: React.FC = () => {
   const {
     pending,
     crawlItemList,
+    fetchCrawlList,
 
     checkedIds,
     setCheckedIds,
     clickCheckbox,
     isAllChecked,
 
-    fetchCrawlList,
+    setCurrentItem,
   } = mainStore();
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // const [isModalOpen, setIsModalOpen] = useState(false);
 
   /*******************************************************
    * handlers
    */
-  const openModal = () => setIsModalOpen(true);
-  const closeModal = () => setIsModalOpen(false);
+  // const openModal = () => setIsModalOpen(true);
+  // const closeModal = () => setModalOpen(false);
 
   const handleCheckboxAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     const isChecked = e.target.checked;
@@ -42,6 +45,10 @@ const Home: React.FC = () => {
     itemId: number
   ) => {
     clickCheckbox(itemId, e.target.checked);
+  };
+
+  const handleItemClick = (id: number) => {
+    setCurrentItem(id);
   };
 
   /*******************************************************
@@ -126,7 +133,10 @@ const Home: React.FC = () => {
                           !isSuccess ? "text-red-700" : ""
                         }`}
                       >
-                        <span onClick={openModal} className="cursor-pointer">
+                        <span
+                          onClick={() => handleItemClick(item.id)}
+                          className="cursor-pointer"
+                        >
                           {isSuccess
                             ? item.pageTitle
                             : "CRAWLING DID NOT WORK."}
@@ -207,7 +217,7 @@ const Home: React.FC = () => {
         <TablePagenation />
       </div>
 
-      <HomeDetail isModalOpen={isModalOpen} closeModal={closeModal} />
+      <HomeDetail />
     </div>
   );
 };

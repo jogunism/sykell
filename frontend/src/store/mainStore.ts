@@ -5,7 +5,7 @@ import { crawlList, deleteCrawlItem, crawlUrl } from "./api";
 import { errorHandler } from "@lib/errorHandler";
 import { toast } from "@lib/toast";
 // constants
-import type { CrawlItem } from "@/constants";
+import type { CrawlItem, HeadingChartItem, LinkChartItem } from "@/constants";
 
 /**
  * Main Store
@@ -33,6 +33,14 @@ interface MainStore {
 
   deleteCheckedItems: () => Promise<void>;
 
+  currentItem: CrawlItem | null;
+  setCurrentItem: (id?: number) => void;
+  isModalOpen: boolean;
+  setModalOpen: (isOpen: boolean) => void;
+
+  headingChartData: HeadingChartItem[];
+  linkChartData: LinkChartItem[];
+
   crawl: (url: string) => Promise<void>;
   reset: () => void;
 }
@@ -52,6 +60,12 @@ const useMainStore = create<MainStore>((set, get) => ({
 
   queryString: "",
   showDeleteButton: false,
+
+  currentItem: null,
+  isModalOpen: false,
+
+  headingChartData: [],
+  linkChartData: [],
 
   //
   fetchCrawlList: async () => {
@@ -124,6 +138,45 @@ const useMainStore = create<MainStore>((set, get) => ({
     }
 
     set({ pending: false });
+  },
+
+  setCurrentItem: (id?: number) => {
+    const currItem = id
+      ? get().crawlItemList.find((item: CrawlItem) => item.id === id) || null
+      : null;
+
+    set({ currentItem: currItem });
+    if (currItem) {
+      set({ isModalOpen: true });
+      set({
+        headingChartData: currItem.headingCounts
+          ? Object.entries(currItem.headingCounts).map(([name, count]) => ({
+              name: name.toUpperCase(), // e.g., H1, H2
+              count: count,
+            }))
+          : [],
+      });
+      set({
+        linkChartData: [
+          {
+            name: "Internal Links",
+            value: currItem.internalLinkCount || 0,
+          },
+          {
+            name: "External Links",
+            value: currItem.externalLinkCount || 0,
+          },
+          {
+            name: "Inaccessible Links",
+            value: currItem.inaccessibleLinkCount || 0,
+          },
+        ].filter((entry) => entry.value > 0),
+      });
+    }
+  },
+
+  setModalOpen: (isOpen: boolean) => {
+    set({ isModalOpen: isOpen });
   },
 
   crawl: async (url: string) => {

@@ -22,3 +22,13 @@ export interface HeadingCounts {
   h5: number;
   h6: number;
 }
+
+export interface HeadingChartItem {
+  name: string;
+  count: number;
+}
+
+export interface LinkChartItem {
+  name: string;
+  value: number;
+}
