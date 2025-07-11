@@ -26,7 +26,7 @@ func NewCrawlService(repo persistence.CrawlResultRepository) *CrawlService {
 	}
 }
 
-func (s *CrawlService) Crawl(cmd commands.CrawlCommand) (domain.CrawlResult, error) {
+func (s *CrawlService) Crawl(cmd commands.CrawlCommand) (domain.CrawlResult, int, error) {
 	result := domain.CrawlResult{
 		URL:           domain.NullString{NullString: sql.NullString{String: cmd.URL, Valid: true}},
 		HeadingCounts: make(map[string]int),
@@ -35,42 +35,46 @@ func (s *CrawlService) Crawl(cmd commands.CrawlCommand) (domain.CrawlResult, err
 	parsedURL, err := url.Parse(cmd.URL)
 	if err != nil {
 		result.Error = domain.ErrInvalidURLFormat.Error()
-		return result, domain.ErrInvalidURLFormat
+		return result, 0, domain.ErrInvalidURLFormat
 	}
 
 	res, err := http.Get(cmd.URL)
 	if err != nil {
 		result.Error = fmt.Sprintf("%s: %v", domain.ErrURLFetchFailed.Error(), err)
-		result.InaccessibleLinkCount = 1
-		// Attempt to save even if fetch failed, to log the error
-		saveErr := s.crawlResultRepo.Save(result)
+		result.InaccessibleLinkCount = 0 // Set to 0 on error
+		result.InternalLinkCount = 0    // Set to 0 on error
+		result.ExternalLinkCount = 0    // Set to 0 on error
+		id, saveErr := s.crawlResultRepo.Save(result)
 		if saveErr != nil {
 			fmt.Printf("Error saving crawl result (fetch failed): %v\n", saveErr)
 		}
-		return result, domain.ErrURLFetchFailed
+		return result, id, domain.ErrURLFetchFailed
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode >= 400 {
 		result.Error = fmt.Sprintf("URL returned status code: %d", res.StatusCode)
-		result.InaccessibleLinkCount = 1
-		// Attempt to save even if status code is error, to log the error
-		saveErr := s.crawlResultRepo.Save(result)
+		result.InaccessibleLinkCount = 0 // Set to 0 on error
+		result.InternalLinkCount = 0    // Set to 0 on error
+		result.ExternalLinkCount = 0    // Set to 0 on error
+		id, saveErr := s.crawlResultRepo.Save(result)
 		if saveErr != nil {
 			fmt.Printf("Error saving crawl result (status code error): %v\n", saveErr)
 		}
-		return result, domain.ErrURLFetchFailed // Return result with error message and a Go error
+		return result, id, domain.ErrURLFetchFailed // Return result with error message and a Go error
 	}
 
 	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
 		result.Error = fmt.Sprintf("%s: %v", domain.ErrHTMLParseFailed.Error(), err)
-		// Attempt to save even if HTML parse failed, to log the error
-		saveErr := s.crawlResultRepo.Save(result)
+		result.InaccessibleLinkCount = 0 // Set to 0 on error
+		result.InternalLinkCount = 0    // Set to 0 on error
+		result.ExternalLinkCount = 0    // Set to 0 on error
+		id, saveErr := s.crawlResultRepo.Save(result)
 		if saveErr != nil {
 			fmt.Printf("Error saving crawl result (HTML parse failed): %v\n", saveErr)
 		}
-		return result, domain.ErrHTMLParseFailed
+		return result, id, domain.ErrHTMLParseFailed
 	}
 
 	// HTML Version (basic inference from doctype)
@@ -121,14 +125,14 @@ func (s *CrawlService) Crawl(cmd commands.CrawlCommand) (domain.CrawlResult, err
 	})
 
 	// Save the successful crawl result to the database
-	saveErr := s.crawlResultRepo.Save(result)
+	id, saveErr := s.crawlResultRepo.Save(result)
 	if saveErr != nil {
 		fmt.Printf("Error saving successful crawl result: %v\n", saveErr)
 		// Decide how to handle this error: return it, log it, etc.
 		// For now, we'll just log and proceed with returning the result
 	}
 
-	return result, nil
+	return result, id, nil
 }
 
 type GetCrawlResultsResponse struct {
@@ -146,7 +150,7 @@ func (s *CrawlService) GetCrawlResults(query queries.GetCrawlResultsQuery) (GetC
 		query.PageSize = 10
 	}
 
-	results, totalCount, err := s.crawlResultRepo.GetAll(query.CurrPage, query.PageSize, query.Query)
+	results, totalCount, err := s.crawlResultRepo.GetAll(query.CurrPage, query.PageSize, query.Query, query.SortingJson)
 	if err != nil {
 		return GetCrawlResultsResponse{}, fmt.Errorf("failed to get crawl results from repository: %w", err)
 	}
