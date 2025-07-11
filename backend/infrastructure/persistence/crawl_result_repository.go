@@ -12,8 +12,8 @@ import (
 // CrawlResultRepository defines the interface for storing CrawlResult
 type CrawlResultRepository interface {
 	Save(result domain.CrawlResult) (int, error)
-	GetAll(page, pageSize int, query string) ([]domain.CrawlResult, int, error)
-	GetTotalCount(query string) (int, error)
+	GetAll(page, pageSize int, query, sortingJson string) ([]domain.CrawlResult, int, error)
+	GetTotalCount(query, sortingJson string) (int, error)
 	DeleteMany(ids []int) error
 }
 
@@ -71,7 +71,7 @@ func (r *mysqlCrawlResultRepository) Save(result domain.CrawlResult) (int, error
 }
 
 // GetAll retrieves a paginated list of CrawlResults from the database
-func (r *mysqlCrawlResultRepository) GetAll(page, pageSize int, query string) ([]domain.CrawlResult, int, error) {
+func (r *mysqlCrawlResultRepository) GetAll(page, pageSize int, query, sortingJson string) ([]domain.CrawlResult, int, error) {
 	offset := (page - 1) * pageSize
 
 	baseQuery := `
@@ -91,18 +91,24 @@ func (r *mysqlCrawlResultRepository) GetAll(page, pageSize int, query string) ([
 	}
 
 	// Get total count first
-	totalCount, err := r.GetTotalCount(query)
+	totalCount, err := r.GetTotalCount(query, sortingJson)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to get total count: %w", err)
 	}
 
+	orderByClause, orderArgs, err := buildOrderByClause(sortingJson)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to build order by clause: %w", err)
+	}
+
 	// Append ORDER BY, LIMIT, OFFSET for the main query
-	baseQuery += whereClause + `
-		ORDER BY id DESC
+	baseQuery += whereClause + orderByClause + `
 		LIMIT ? OFFSET ?
 	`
+	args = append(args, orderArgs...)
 	args = append(args, pageSize, offset)
 
+	// log.Printf("query: %s with args: %v", baseQuery, args)
 	rows, err := r.db.Query(baseQuery, args...)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to query crawl results: %w", err)
@@ -150,7 +156,7 @@ func (r *mysqlCrawlResultRepository) GetAll(page, pageSize int, query string) ([
 }
 
 // GetTotalCount retrieves the total number of crawl results from the database
-func (r *mysqlCrawlResultRepository) GetTotalCount(query string) (int, error) {
+func (r *mysqlCrawlResultRepository) GetTotalCount(query, sortingJson string) (int, error) {
 	var count int
 	baseQuery := "SELECT COUNT(*) FROM crawl_results"
 	var args []interface{}
@@ -161,11 +167,48 @@ func (r *mysqlCrawlResultRepository) GetTotalCount(query string) (int, error) {
 		args = append(args, searchQuery, searchQuery)
 	}
 
-	err := r.db.QueryRow(baseQuery, args...).Scan(&count)
+	orderByClause, orderArgs, err := buildOrderByClause(sortingJson)
+	if err != nil {
+		return 0, fmt.Errorf("failed to build order by clause for total count: %w", err)
+	}
+	baseQuery += orderByClause // Add order by to count query if needed (though usually not for count)
+	args = append(args, orderArgs...)
+
+	err = r.db.QueryRow(baseQuery, args...).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get total count of crawl results: %w", err)
 	}
 	return count, nil
+}
+
+// buildOrderByClause parses the sorting JSON and builds the ORDER BY clause
+func buildOrderByClause(sortingJson string) (string, []interface{}, error) {
+	orderByClause := " ORDER BY id DESC" // Default order
+	var orderArgs []interface{}
+
+	if sortingJson == "" {
+		return orderByClause, orderArgs, nil
+	}
+
+	var sortingMap map[string]bool
+	if err := json.Unmarshal([]byte(sortingJson), &sortingMap); err != nil {
+		return "", nil, fmt.Errorf("failed to unmarshal sorting JSON: %w", err)
+	}
+
+	var orderByParts []string
+	for col, isAsc := range sortingMap {
+		if isAsc {
+			orderByParts = append(orderByParts, fmt.Sprintf("%s ASC", col))
+		} else {
+			orderByParts = append(orderByParts, fmt.Sprintf("%s DESC", col))
+		}
+	}
+
+	if len(orderByParts) > 0 {
+		orderByClause = " ORDER BY " + strings.Join(orderByParts, ", ")
+	}
+
+	return orderByClause, orderArgs, nil
 }
 
 // DeleteMany deletes multiple CrawlResults from the database by IDs

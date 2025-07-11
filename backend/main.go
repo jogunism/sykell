@@ -24,7 +24,7 @@ func main() {
 	defer db.Close()
 
 
-	gin.SetMode(gin.ReleaseMode)
+	// gin.SetMode(gin.ReleaseMode)
 
 
 	// Initialize repositories

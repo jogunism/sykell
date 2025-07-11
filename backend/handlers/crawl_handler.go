@@ -65,6 +65,7 @@ func (h *CrawlHandler) GetCrawlResults(c *gin.Context) {
 	currPageStr := c.DefaultQuery("currPage", "1")
 	pageSizeStr := c.DefaultQuery("pageSize", "10")
 	queryStr := c.DefaultQuery("query", "")
+	sortingJsonStr := c.DefaultQuery("sorting", "") // Get sorting JSON string
 
 	currPage, err := strconv.Atoi(currPageStr)
 	if err != nil || currPage < 1 {
@@ -77,9 +78,10 @@ func (h *CrawlHandler) GetCrawlResults(c *gin.Context) {
 	}
 
 	query := queries.GetCrawlResultsQuery{
-		CurrPage: currPage,
-		PageSize: pageSize,
-		Query:    queryStr,
+		CurrPage:   currPage,
+		PageSize:   pageSize,
+		Query:      queryStr,
+		SortingJson: sortingJsonStr, // Assign sorting JSON string
 	}
 
 	response, err := h.crawlService.GetCrawlResults(query)
