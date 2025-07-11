@@ -11,7 +11,7 @@ import (
 
 // CrawlResultRepository defines the interface for storing CrawlResult
 type CrawlResultRepository interface {
-	Save(result domain.CrawlResult) error
+	Save(result domain.CrawlResult) (int, error)
 	GetAll(page, pageSize int, query string) ([]domain.CrawlResult, int, error)
 	GetTotalCount(query string) (int, error)
 	DeleteMany(ids []int) error
@@ -28,11 +28,11 @@ func NewMySQLCrawlResultRepository(db *sql.DB) CrawlResultRepository {
 }
 
 // Save saves a CrawlResult to the database
-func (r *mysqlCrawlResultRepository) Save(result domain.CrawlResult) error {
+func (r *mysqlCrawlResultRepository) Save(result domain.CrawlResult) (int, error) {
 	// Convert HeadingCounts map to JSON string
 	headingCountsJSON, err := json.Marshal(result.HeadingCounts)
 	if err != nil {
-		return fmt.Errorf("failed to marshal heading counts: %w", err)
+		return 0, fmt.Errorf("failed to marshal heading counts: %w", err)
 	}
 
 	stmt, err := r.db.Prepare(`
@@ -43,13 +43,13 @@ func (r *mysqlCrawlResultRepository) Save(result domain.CrawlResult) error {
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`)
 	if err != nil {
-		return fmt.Errorf("failed to prepare statement: %w", err)
+		return 0, fmt.Errorf("failed to prepare statement: %w", err)
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(
+	res, err := stmt.Exec(
 		result.HTMLVersion,
-		result.URL.String, // Use String field for saving
+		result.URL.String,
 		result.PageTitle,
 		headingCountsJSON,
 		result.InternalLinkCount,
@@ -59,10 +59,15 @@ func (r *mysqlCrawlResultRepository) Save(result domain.CrawlResult) error {
 		result.Error,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to execute statement: %w", err)
+		return 0, fmt.Errorf("failed to execute statement: %w", err)
 	}
 
-	return nil
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get last insert ID: %w", err)
+	}
+
+	return int(id), nil
 }
 
 // GetAll retrieves a paginated list of CrawlResults from the database

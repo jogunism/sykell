@@ -38,9 +38,9 @@ func (h *CrawlHandler) Crawl(c *gin.Context) {
 		URL: req.URL,
 	}
 
-	result, err := h.crawlService.Crawl(cmd)
+	result, id, err := h.crawlService.Crawl(cmd)
 	if err != nil {
-		// fmt.Println(">>>>> ", result.Error)
+		fmt.Println(">>>>> ", result.Error)
 		switch err {
 			case domain.ErrInvalidURLFormat:
 				c.JSON(http.StatusBadRequest, gin.H{"message": result.Error})
@@ -57,7 +57,7 @@ func (h *CrawlHandler) Crawl(c *gin.Context) {
 	}
 
 	// fmt.Println(result)
-	c.JSON(http.StatusOK, gin.H{"message": "Crawl the url successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Crawl the url successfully", "id": id})
 }
 
 // GetCrawlResults handles the request to get a paginated list of crawl results
