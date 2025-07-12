@@ -1,8 +1,10 @@
 package services
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -26,6 +28,21 @@ func NewCrawlService(repo persistence.CrawlResultRepository) *CrawlService {
 	}
 }
 
+// saveFailedCrawl handles the logic for saving a crawl result when an error occurs.
+func (s *CrawlService) saveFailedCrawl(result domain.CrawlResult, crawlError error, format string, args ...any) (domain.CrawlResult, int, error) {
+	result.Error = fmt.Sprintf(format, args...)
+	result.InaccessibleLinkCount = 0
+	result.InternalLinkCount = 0
+	result.ExternalLinkCount = 0
+	result.PageTitle = "CRAWLING HAS FAILED"
+
+	id, saveErr := s.crawlResultRepo.Save(result)
+	if saveErr != nil {
+		fmt.Printf("Error saving failed crawl result: %v (original error: %v)\n", saveErr, crawlError)
+	}
+	return result, id, crawlError
+}
+
 func (s *CrawlService) Crawl(cmd commands.CrawlCommand) (domain.CrawlResult, int, error) {
 	result := domain.CrawlResult{
 		URL:           domain.NullString{NullString: sql.NullString{String: cmd.URL, Valid: true}},
@@ -34,55 +51,39 @@ func (s *CrawlService) Crawl(cmd commands.CrawlCommand) (domain.CrawlResult, int
 
 	parsedURL, err := url.Parse(cmd.URL)
 	if err != nil {
+		// No need to save, as the URL is invalid from the start.
 		result.Error = domain.ErrInvalidURLFormat.Error()
 		return result, 0, domain.ErrInvalidURLFormat
 	}
 
 	res, err := http.Get(cmd.URL)
 	if err != nil {
-		result.Error = fmt.Sprintf("%s: %v", domain.ErrURLFetchFailed.Error(), err)
-		result.InaccessibleLinkCount = 0 // Set to 0 on error
-		result.InternalLinkCount = 0    // Set to 0 on error
-		result.ExternalLinkCount = 0    // Set to 0 on error
-		id, saveErr := s.crawlResultRepo.Save(result)
-		if saveErr != nil {
-			fmt.Printf("Error saving crawl result (fetch failed): %v\n", saveErr)
-		}
-		return result, id, domain.ErrURLFetchFailed
+		return s.saveFailedCrawl(result, domain.ErrURLFetchFailed, "%s: %v", domain.ErrURLFetchFailed.Error(), err)
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode >= 400 {
-		result.Error = fmt.Sprintf("URL returned status code: %d", res.StatusCode)
-		result.InaccessibleLinkCount = 0 // Set to 0 on error
-		result.InternalLinkCount = 0    // Set to 0 on error
-		result.ExternalLinkCount = 0    // Set to 0 on error
-		id, saveErr := s.crawlResultRepo.Save(result)
-		if saveErr != nil {
-			fmt.Printf("Error saving crawl result (status code error): %v\n", saveErr)
-		}
-		return result, id, domain.ErrURLFetchFailed // Return result with error message and a Go error
+		return s.saveFailedCrawl(result, domain.ErrURLFetchFailed, "URL returned status code: %d", res.StatusCode)
 	}
 
-	doc, err := goquery.NewDocumentFromReader(res.Body)
+	bodyBytes, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		result.Error = fmt.Sprintf("%s: %v", domain.ErrHTMLParseFailed.Error(), err)
-		result.InaccessibleLinkCount = 0 // Set to 0 on error
-		result.InternalLinkCount = 0    // Set to 0 on error
-		result.ExternalLinkCount = 0    // Set to 0 on error
-		id, saveErr := s.crawlResultRepo.Save(result)
-		if saveErr != nil {
-			fmt.Printf("Error saving crawl result (HTML parse failed): %v\n", saveErr)
-		}
-		return result, id, domain.ErrHTMLParseFailed
+		wrappedErr := fmt.Errorf("failed to read response body: %w", err)
+		return s.saveFailedCrawl(result, wrappedErr, "Failed to read response body: %v", err)
 	}
 
-	// HTML Version (basic inference from doctype)
-	if strings.Contains(doc.Text(), "<!DOCTYPE html>") {
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(bodyBytes))
+	if err != nil {
+		return s.saveFailedCrawl(result, domain.ErrHTMLParseFailed, "%s: %v", domain.ErrHTMLParseFailed.Error(), err)
+	}
+
+	// HTML Version
+	bodyString := string(bodyBytes)
+	if strings.Contains(strings.ToLower(bodyString), "<!doctype html>") {
 		result.HTMLVersion = "HTML5"
-	} else if strings.Contains(doc.Text(), `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">`) {
+	} else if strings.Contains(bodyString, `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">`) {
 		result.HTMLVersion = "HTML 4.01 Strict"
-	} else if strings.Contains(doc.Text(), `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">`) {
+	} else if strings.Contains(bodyString, `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">`) {
 		result.HTMLVersion = "XHTML 1.0 Strict"
 	} else {
 		result.HTMLVersion = "Unknown/Other"
@@ -90,59 +91,54 @@ func (s *CrawlService) Crawl(cmd commands.CrawlCommand) (domain.CrawlResult, int
 
 	// Page Title
 	result.PageTitle = doc.Find("title").Text()
-
-	// Heading Tag Counts
-	for i := 1; i <= 6; i++ {
-		tag := fmt.Sprintf("h%d", i)
-		result.HeadingCounts[tag] = doc.Find(tag).Length()
+	if result.PageTitle == "" {
+		result.PageTitle = "NO TITLE"
 	}
 
-	// Link Counts and Login Form
+	// Count heading tags
+	for i := 1; i <= 6; i++ {
+		heading := fmt.Sprintf("h%d", i)
+		count := doc.Find(heading).Length()
+		if count > 0 {
+			result.HeadingCounts[heading] = count
+		}
+	}
+
+	// Count links
 	doc.Find("a").Each(func(i int, s *goquery.Selection) {
-		href, exists := s.Attr("href")
-		if !exists || href == "" || href == "#" {
+		link, exists := s.Attr("href")
+		if !exists {
 			return
 		}
-
-		linkURL, err := parsedURL.Parse(href)
+		resolvedLink, err := parsedURL.Parse(link)
 		if err != nil {
-			return // Malformed URL, skip
+			result.InaccessibleLinkCount++
+			return
 		}
-
-		if linkURL.Host == parsedURL.Host {
+		if resolvedLink.Host == parsedURL.Host {
 			result.InternalLinkCount++
 		} else {
 			result.ExternalLinkCount++
 		}
 	})
 
-	// Check for login form
-	doc.Find("form").Each(func(i int, s *goquery.Selection) {
-		if s.Find("input[type=password]").Length() > 0 {
-			result.HasLoginForm = true
-			return // Found a login form, no need to check further
-		}
-	})
-
-	// Save the successful crawl result to the database
+	// Save the successful result
 	id, saveErr := s.crawlResultRepo.Save(result)
 	if saveErr != nil {
-		fmt.Printf("Error saving successful crawl result: %v\n", saveErr)
-		// Decide how to handle this error: return it, log it, etc.
-		// For now, we'll just log and proceed with returning the result
+		result.Error = fmt.Sprintf("failed to save crawl result: %v", saveErr)
+		return result, 0, saveErr
 	}
 
 	return result, id, nil
 }
 
 type GetCrawlResultsResponse struct {
-	List      []domain.CrawlResult `json:"list"`
-	TotalCount int                `json:"total_count"`
+	List       []domain.CrawlResult `json:"list"`
+	TotalCount int                  `json:"total_count"`
 }
 
 // GetCrawlResults retrieves a paginated list of crawl results
 func (s *CrawlService) GetCrawlResults(query queries.GetCrawlResultsQuery) (GetCrawlResultsResponse, error) {
-	// Ensure page and pageSize are valid
 	if query.CurrPage < 1 {
 		query.CurrPage = 1
 	}
@@ -156,7 +152,7 @@ func (s *CrawlService) GetCrawlResults(query queries.GetCrawlResultsQuery) (GetC
 	}
 
 	return GetCrawlResultsResponse{
-		List:      results,
+		List:       results,
 		TotalCount: totalCount,
 	}, nil
 }
