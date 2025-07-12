@@ -2,16 +2,16 @@
 
 ## Tech Stack
 
-- **Backend**: Go
-  - **Framework**: Gin
-  - **Database**: MySQL
+- **Backend**: `Go`
+  - **Framework**: `Gin`
+  - **Database**: `MySQL`
   - **Web Scraping**: `goquery`
 
-- **Frontend**: React
-  - **UI Framework**: Tailwind CSS
+- **Frontend**: `React`
+  - **UI Framework**: `Tailwind CSS`
   - **HTTP Client**: `axios`
 
-- **Containerization**: Docker, Docker Compose
+- **Containerization**: `Docker`, `Docker Compose`
 
 ## Getting Started
 
