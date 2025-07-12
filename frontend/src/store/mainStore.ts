@@ -164,6 +164,7 @@ const useMainStore = create<MainStore>((set, get) => ({
       await get().fetchCrawlList();
 
       set({ isAllChecked: false });
+      set({ showDeleteButton: false });
 
       toast.success(response.message);
     } catch (error) {
