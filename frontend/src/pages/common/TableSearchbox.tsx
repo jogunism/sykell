@@ -9,13 +9,7 @@ import mainStore from "@store/mainStore";
  * Component Table Searchbox
  */
 const TableSearchbox: React.FC = () => {
-  const {
-    showDeleteButton,
-    queryString,
-    setQueryString,
-    deleteCheckedItems,
-    fetchCrawlList,
-  } = mainStore();
+  const { queryString, setQueryString, fetchCrawlList } = mainStore();
 
   /*******************************************************
    * handlers
@@ -55,20 +49,6 @@ const TableSearchbox: React.FC = () => {
           </button>
         )}
       </div>
-      {/* <button
-        className="ml-2 w-[80px] h-10 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md"
-        onClick={() => handleSearch(queryString)}
-      >
-        Search
-      </button> */}
-      {showDeleteButton && (
-        <button
-          className="ml-2 w-[80px] h-10 bg-red-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-md"
-          onClick={deleteCheckedItems}
-        >
-          Delete
-        </button>
-      )}
     </div>
   );
 };

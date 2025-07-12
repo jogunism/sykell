@@ -22,6 +22,10 @@ const Home: React.FC = () => {
     crawlItemList,
     fetchCrawlList,
 
+    showDeleteButton,
+    deleteCheckedItems,
+    reAnalyticsUrls,
+
     checkedIds,
     setCheckedIds,
     clickCheckbox,
@@ -72,7 +76,6 @@ const Home: React.FC = () => {
   }, [currentId]);
 
   useEffect(() => {
-    // console.log(isModalOpen);
     if (!isModalOpen) {
       // remove query parameter
       const newParams = new URLSearchParams(searchParams);
@@ -90,8 +93,30 @@ const Home: React.FC = () => {
         <h1 className="text-3xl font-bold text-gray-800">Home</h1>
       </div>
 
-      <div className="mt-4 p-4 w-full bg-white shadow-md rounded-lg overflow-hidden">
-        <TableSearchbox />
+      <div className="mt-4 p-4 w-full bg-white shadow-md rounded-lg overflow-hidden ">
+        <div className="flex items-center mb-3">
+          <div className="flex items-center gap-2 pb-3">
+            {showDeleteButton && (
+              <>
+                <button
+                  className="w-[60px] h-10 bg-red-500 hover:bg-red-700 text-white text-sm font-bold py-2 px-2 rounded-md"
+                  onClick={deleteCheckedItems}
+                >
+                  Delete
+                </button>
+                <button
+                  className="w-[70px] h-10 bg-blue-500 hover:bg-blue-700 text-white text-sm font-bold py-2 px-1 rounded-md"
+                  onClick={reAnalyticsUrls}
+                >
+                  Anaytics
+                </button>
+              </>
+            )}
+          </div>
+          <div className="ml-auto">
+            <TableSearchbox />
+          </div>
+        </div>
 
         <table className="min-w-full leading-normal table-fixed">
           <thead>

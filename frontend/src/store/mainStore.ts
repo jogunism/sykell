@@ -27,16 +27,17 @@ interface MainStore {
   clickCheckbox: (itemId: number, isChecked: boolean) => void;
   isAllChecked: boolean;
 
+  queryString: string;
   sorting: { [key: string]: boolean | undefined };
   toggleSorting: (type: string) => Promise<void>;
 
-  queryString: string;
   showDeleteButton: boolean;
+  deleteCheckedItems: () => Promise<void>;
+
+  reAnalyticsUrls: () => Promise<void>;
 
   setCurrPage: (currPage: number) => Promise<void>;
   setQueryString: (query: string) => void;
-
-  deleteCheckedItems: () => Promise<void>;
 
   currentItem: CrawlItem | null;
   setCurrentItem: (id?: number) => void;
@@ -51,7 +52,10 @@ interface MainStore {
 }
 
 const useMainStore = create<MainStore>((set, get) => ({
-  // init getter values
+  /*************************************************************
+   * Init State values
+   *************************************************************/
+
   pending: false,
   isSuccess: undefined,
 
@@ -78,7 +82,12 @@ const useMainStore = create<MainStore>((set, get) => ({
   headingChartData: [],
   linkChartData: [],
 
-  //
+  /*************************************************************
+   * State handlers
+   *************************************************************/
+
+  /** HOME **/
+
   fetchCrawlList: async () => {
     set({ pending: true });
 
@@ -132,7 +141,7 @@ const useMainStore = create<MainStore>((set, get) => ({
         currentSorting[type] !== undefined ? !currentSorting[type] : false,
     };
     set({ sorting: newSorting });
-    console.log(newSorting);
+    // console.log(newSorting);
     await get().fetchCrawlList();
   },
 
@@ -154,6 +163,8 @@ const useMainStore = create<MainStore>((set, get) => ({
       // Re-fetch the list to ensure data consistency
       await get().fetchCrawlList();
 
+      set({ isAllChecked: false });
+
       toast.success(response.message);
     } catch (error) {
       const err = errorHandler(error);
@@ -161,6 +172,41 @@ const useMainStore = create<MainStore>((set, get) => ({
     }
 
     set({ pending: false });
+  },
+
+  reAnalyticsUrls: async () => {
+    set({ pending: true });
+
+    const itemMap = new Map(get().crawlItemList.map((item) => [item.id, item]));
+
+    try {
+      const _promises = get()
+        .checkedIds.map((id) => {
+          const item = itemMap.get(id);
+          if (item?.url) {
+            return get().crawl(item.url);
+          }
+          console.warn(`NO url for ID ${id}. Skipping re-analysis.`);
+          return null;
+        })
+        .filter((p): p is Promise<void> => p !== null); // Type guard to filter out nulls
+
+      if (_promises.length > 0) {
+        toast.info(`${_promises.length} items submitted for re-analysis.`);
+        await Promise.all(_promises);
+      }
+
+      // Refresh the list to show updated data and clear selections
+      await get().fetchCrawlList();
+      get().setCheckedIds([]);
+    } catch (error) {
+      const err = errorHandler(error);
+      toast.error(
+        `An error occurred during the re-analysis batch process: ${err.message}`
+      );
+    } finally {
+      set({ pending: false });
+    }
   },
 
   setCurrentItem: (id?: number) => {
@@ -201,6 +247,8 @@ const useMainStore = create<MainStore>((set, get) => ({
   setModalOpen: (isOpen: boolean) => {
     set({ isModalOpen: isOpen });
   },
+
+  /** ANALYTICS **/
 
   crawl: async (url: string) => {
     set({ pending: true });
