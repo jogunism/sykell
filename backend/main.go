@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"strings"
 
 	"backend/application/services"
 	"backend/handlers"
@@ -24,9 +23,6 @@ func main() {
 	defer db.Close()
 
 
-	// gin.SetMode(gin.ReleaseMode)
-
-
 	// Initialize repositories
 	crawlResultRepo := persistence.NewMySQLCrawlResultRepository(db)
 
@@ -40,37 +36,6 @@ func main() {
 
 	// Setup Gin router
 	r := gin.Default()
-
-	// X-Forwarded-For 헤더 디버깅용 미들웨어
-	r.Use(func(c *gin.Context) {
-		xForwardedFor := c.GetHeader("X-Forwarded-For")
-		if xForwardedFor != "" {
-			ips := strings.Split(xForwardedFor, ",")
-			log.Printf("X-Forwarded-For: %s (IP count: %d)", xForwardedFor, len(ips))
-			
-			// 30개 이상이면 경고
-			if len(ips) >= 30 {
-				log.Printf("WARNING: X-Forwarded-For has %d IPs, this will cause 463 error", len(ips))
-			}
-		}
-		
-		// 모든 X-Forwarded-* 헤더 로깅
-		for name, values := range c.Request.Header {
-			if strings.HasPrefix(name, "X-Forwarded-") {
-				log.Printf("Header %s: %v", name, values)
-			}
-		}
-		
-		c.Next()
-	})
-
-
-	// AWS ALB 463 에러 방지를 위한 프록시 설정
-	r.ForwardedByClientIP = true
-	r.SetTrustedProxies([]string{
-		"10.0.0.0/8",     // VPC 내부
-		"172.16.0.0/12",  // ALB 대역
-	})
 
 	// Configure CORS middleware
 	r.Use(cors.New(cors.Config{
@@ -90,9 +55,9 @@ func main() {
 	protected := api.Group("")
 	protected.Use(handlers.AuthMiddleware())
 	{
-		protected.POST("/crawl", crawlHandler.Crawl)
 		protected.GET("/crawl/list", crawlHandler.GetCrawlResults)
 		protected.DELETE("/crawl", crawlHandler.DeleteCrawlResults)
+		protected.POST("/crawl", crawlHandler.Crawl)
 	}
 
 	r.Run(":8080") // listen and serve on 0.0.0.0:8080
