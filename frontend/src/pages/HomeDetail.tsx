@@ -48,7 +48,7 @@ const HomeDetail: React.FC = () => {
       size={"lg"}
       isOpen={isModalOpen}
       onClose={handleModalClose}
-      title={currentItem?.pageTitle || "CRAWLING DID NOT WORK."}
+      title={currentItem?.pageTitle}
       titleColor={currentItem?.error ? "text-red-800" : "text-gray-800"}
     >
       <div className="p-6 text-gray-700">

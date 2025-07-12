@@ -184,9 +184,7 @@ const Home: React.FC = () => {
                           onClick={() => handleItemClick(item.id)}
                           className="cursor-pointer"
                         >
-                          {isSuccess
-                            ? item.pageTitle
-                            : "CRAWLING DID NOT WORK."}
+                          {item.pageTitle}
                         </span>
                       </p>
                       {item.url && (
